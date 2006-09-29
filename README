@@ -1,0 +1,17 @@
+REQUIREMENTS
+------------
+
+Idealized:
+
+ * A POSIX system.
+ * A C++ compiler with POSIX threads support.
+
+Tested:
+
+ * Linux with glibc, GCC and NPTL.
+
+BUILDING
+--------
+
+1. Make any necessary changes to src/Makefile.
+2. Type 'make'.
