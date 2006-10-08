@@ -15,16 +15,29 @@
 ;; with this program; if not, write to the Free Software Foundation, Inc.,
 ;; 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-(defsystem "mmtn"
-    :version "0.0.0"
-    :author "Nick Thomas <jesuswaffle@gmail.com>"
-    :licence "GPLv2"
-    :depends-on (:sb-bsd-sockets :bordeaux-threads)
-    :components ((:file "packages")
-		 (:file "config" :depends-on ("packages"))
-		 (:file "util" :depends-on ("packages" "config"))
-		 (:file "logger" :depends-on ("util"))
-		 (:file "queue" :depends-on ("util"))
-		 (:file "client" :depends-on ("util" "queue"))
-		 (:file "server" :depends-on ("util" "logger" "client"))
-		 (:file "protocol" :depends-on ("util" "client"))))
+;; Implements the various versions of the mmtn protocol.
+
+(in-package mmtn)
+
+(defvar *client-version* nil
+  "The client's version. Only defined in client threads.")
+
+(defconstant +max-client-version+ 1
+  "The maximum supported client version.")
+
+(defun client-main ()
+  "Starts the client running."
+  (with-client-input version
+    (let ((*client-version*
+	   (or (min +max-client-version+
+		    (max 0 (parse-integer version :junk-allowed t)))
+	       1)))
+      (client-message "~A~%" *client-version*)
+      (command-loop))))
+
+(defun command-loop ()
+  "Iteratively reads and processes commands."
+  (with-client-input line
+    ;; XXX
+    (client-message "~A~%" line) 
+    (command-loop)))

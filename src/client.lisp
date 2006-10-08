@@ -116,20 +116,10 @@ event. False otherwise."))
 
 (defun run-client ()
   "Runs the client event loop."
+  ;; This is defined in protcol.lisp.
   (client-main)
   (loop (let ((event (blocking-dequeue (client-event-queue *current-client*))))
 	  (process-event event))))
-
-(defun client-main ()
-  "Starts the client going. This function should be redefined in main.lisp.
-The stub definition is in client.lisp."
-  ;; This SLEEP is a pretty kludgy way to make sure that things are
-  ;; initialized before we take them down.
-  (sleep 1)
-  (client-message 
-"This MUD server has not been properly configured. Please contact the
-operators and tell them to fix it. Bye!~%")
-  (remove-client))
 
 (defun send-event (event &optional (client *current-client*))
   "Sends an event to a single client: the current, by default."
@@ -147,7 +137,9 @@ operators and tell them to fix it. Bye!~%")
 	       do (let ((line (read-line input-stream nil)))
 		    (if (null line)
 			(progn (remove-client client)
-			       (return-from main-loop))
+			       ;; Just do nothing until we're
+			       ;; interrupted and told to exit.
+			       (loop (sleep 1)))
 			(if (with-lock-held ((client-need-input-lock client))
 			      (client-needs-input-p client))
 			    (send-event (make-instance 'input-event :text line)
@@ -158,6 +150,8 @@ operators and tell them to fix it. Bye!~%")
       (condition-notify (client-listener-done-condition client)))))
 
 (defmethod process-event ((event input-event))
+  (with-lock-held ((client-need-input-lock *current-client*))
+    (setf (client-needs-input-p *current-client*) nil))
   (funcall (the function (client-input-handler *current-client*))
 	   (input-event-text event)))
 
@@ -165,7 +159,7 @@ operators and tell them to fix it. Bye!~%")
   "Reads a line from the client and executes BODY with the string bound to
 VAR. Abstracts out all of the event handling nonsense. Returns T if the body
 was executed, and NIL otherwise."
-  `(%with-client-input #'(lambda (,var) ,@body)))
+  `(%with-client-input #'(lambda (,var) ,@body t)))
 
 (defun %with-client-input (fun)
   (declare (function fun))
@@ -173,8 +167,7 @@ was executed, and NIL otherwise."
     (acquire-lock input-lock)
     (aif (dequeue (client-input-queue *current-client*))
 	 (progn (release-lock input-lock)
-		(funcall fun it)
-		t)
+		(funcall fun it))
 	 (progn (setf (client-needs-input-p *current-client*) t)
 		(setf (client-input-handler *current-client*) fun)
 		(release-lock input-lock)
