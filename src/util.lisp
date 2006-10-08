@@ -49,10 +49,12 @@
   "Equivalent to (OR NULL TYPE)."
   `(or null ,type))
 
-(defmacro mutex-setf (mutex &rest args)
-  "Acquires a mutex, then performa a SETF."
-  `(with-recursive-lock (,mutex) (setf ,@args)))
+(defmacro locked-setf (lock &rest args)
+  "Acquires a lock, then performa a SETF."
+  `(with-lock-held (,lock) (setf ,@args)))
 
+;; XXX: This is left over from when we were using SB-THREAD. Do we
+;; still need it?
 (defmacro make-thread-with-specials (specials fun &key name)
   "Like MAKE-THREAD, except that it causes the bindings of a number of listed
 special variables to carry over to the new thread. 25 characters."

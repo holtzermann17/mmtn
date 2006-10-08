@@ -18,11 +18,8 @@
 ;; Package definitions.
 
 (unless (member :sbcl *features*)
-  (error "Sorry, mmtn only runs under SBCL. Please install it and try again."))
-
-(unless (member :sb-thread *features*)
-  (error "Sorry, mmtn requires multithreading support. Please
-recompile your SBCL with SB-THREAD enabled."))
+  (error "Sorry, mmtn only runs under SBCL at the moment. This will change
+in the future."))
 
 (defpackage :mmtn
-  (:use :cl :sb-thread :sb-bsd-sockets :sb-ext))
+  (:use :cl :sb-bsd-sockets :bordeaux-threads))

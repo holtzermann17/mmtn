@@ -18,25 +18,22 @@
 (in-package mmtn)
 
 (defclass client ()
-  ((thread :accessor client-thread :type (nullable sb-thread))
-   (listener-thread :accessor client-listener-thread
-		    :type (nullable sb-thread))
+  ((thread :accessor client-thread)
+   (listener-thread :accessor client-listener-thread)
    (socket :reader client-socket :initarg :socket :type socket)
    (sock-stream :reader client-sock-stream :initarg :sock-stream)
    (event-queue :reader client-event-queue :initform (make-empty-queue)
 		:type queue)
-   (need-input-mutex :reader client-need-input-mutex
-		     :initform (make-mutex) :type mutex)
+   (need-input-lock :reader client-need-input-lock :initform (make-lock))
    (need-input-p :accessor client-needs-input-p :initform nil)
    (input-handler :accessor client-input-handler :initform nil
 		  :type (nullable function))
    (input-queue :reader client-input-queue :initform (make-empty-queue)
 		:type queue)
-   (listener-done-mutex :reader client-listener-done-mutex
-			:initform (make-mutex) :type mutex)
+   (listener-done-lock :reader client-listener-done-lock :initform (make-lock))
    (listener-done-p :accessor client-listener-done-p :initform nil)
-   (listener-done-queue :reader client-listener-done-queue
-			:initform (make-waitqueue) :type waitqueue)
+   (listener-done-condition :reader client-listener-done-condition
+			:initform (make-condition-variable))
    (ip-addr :reader client-ip-addr :initarg :ip-addr :type string)))
 
 (defclass event () ()
@@ -65,8 +62,8 @@ event. False otherwise."))
 (defvar %*clients* ()
   "A list of all clients.")
 
-(defvar %*clients-mutex* (make-mutex)
-  "The mutex for %*clients*.")
+(defvar %*clients-lock* (make-lock)
+  "The lock for %*clients*.")
 
 (defvar *current-client* nil
   "The current client. Only defined inside a client thread.")
@@ -79,7 +76,7 @@ event. False otherwise."))
 						  :buffering :line)
 		 :ip-addr (format-ip-addr (socket-peername sock)))))
     (message :info "New client: ~A" (client-ip-addr client))
-    (with-mutex (%*clients-mutex*) (push client %*clients*))
+    (with-lock-held (%*clients-lock*) (push client %*clients*))
     (setf (client-listener-thread client)
 	  (make-thread-with-standard-specials
 	   (fn (run-client-listener client))
@@ -100,21 +97,22 @@ event. False otherwise."))
 (defmethod process-event ((event stop-event))
   (when (eq *current-client* (stop-event-client event))
     (let ((client *current-client*))
-      (with-mutex ((client-listener-done-mutex client))
-	(terminate-thread (client-listener-thread client))
-	(loop do (condition-wait (client-listener-done-queue client)
-			      (client-listener-done-mutex client))
+      (with-lock-held ((client-listener-done-lock client))
+	(destroy-thread (client-listener-thread client))
+	(loop do (condition-wait (client-listener-done-condition client)
+				 (client-listener-done-lock client))
 	      until (client-listener-done-p client)))
       (socket-close (client-socket client))
-      (mutex-setf %*clients-mutex* %*clients*
-		  (delete client (the list %*clients*) :test #'eq))
+      (locked-setf %*clients-lock* %*clients*
+		   (delete client (the list %*clients*) :test #'eq))
       (message :info "Client ~A disconnected" (client-ip-addr client))
-      (quit))))
+      ;; XXX: Remove this, figure out some other way to signal termination.
+      (sb-ext:quit))))
 
 (defun for-each-client (fun)
   (declare (function fun))
   "Calls a given function on each client."
-  (mapc fun (with-mutex (%*clients-mutex*) (copy-list %*clients*))))
+  (mapc fun (with-lock-held (%*clients-lock*) (copy-list %*clients*))))
 
 (defun run-client ()
   "Runs the client event loop."
@@ -150,14 +148,14 @@ operators and tell them to fix it. Bye!~%")
 		    (if (null line)
 			(progn (remove-client client)
 			       (return-from main-loop))
-			(if (with-mutex ((client-need-input-mutex client))
+			(if (with-lock-held ((client-need-input-lock client))
 			      (client-needs-input-p client))
 			    (send-event (make-instance 'input-event :text line)
 					client)
 			    (enqueue (client-input-queue client) line)))))
-      (mutex-setf (client-listener-done-mutex client)
-		  (client-listener-done-p client) t)
-      (condition-notify (client-listener-done-queue client)))))
+      (locked-setf (client-listener-done-lock client)
+		   (client-listener-done-p client) t)
+      (condition-notify (client-listener-done-condition client)))))
 
 (defmethod process-event ((event input-event))
   (funcall (the function (client-input-handler *current-client*))
@@ -171,15 +169,15 @@ was executed, and NIL otherwise."
 
 (defun %with-client-input (fun)
   (declare (function fun))
-  (let ((input-mutex (client-need-input-mutex *current-client*)))
-    (get-mutex input-mutex)
+  (let ((input-lock (client-need-input-lock *current-client*)))
+    (acquire-lock input-lock)
     (aif (dequeue (client-input-queue *current-client*))
-	 (progn (release-mutex input-mutex)
+	 (progn (release-lock input-lock)
 		(funcall fun it)
 		t)
 	 (progn (setf (client-needs-input-p *current-client*) t)
 		(setf (client-input-handler *current-client*) fun)
-		(release-mutex input-mutex)
+		(release-lock input-lock)
 		nil))))
 
 (defun client-message (format &rest args)

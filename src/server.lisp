@@ -39,7 +39,7 @@
       (message :warning "Server not running, not stopping anything.")
       (progn (message :warning "Stopping server now!")
 	     (message :info "Not accepting new connections...") 
-	     (terminate-thread *server-thread*)
+	     (destroy-thread *server-thread*)
 	     (socket-close *server-sock*)
 	     (setf *server-sock* nil)
 	     (setf *server-thread* nil)

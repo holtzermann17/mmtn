@@ -25,9 +25,8 @@
 
 (defclass queue ()
   ((contents :accessor queue-contents :initform ())
-   (mutex :reader queue-mutex :initform (make-mutex) :type mutex)
-   (waitqueue :reader queue-waitqueue :initform (make-waitqueue)
-	      :type waitqueue)))
+   (lock :reader queue-lock :initform (make-lock))
+   (condition :reader queue-condition :initform (make-condition-variable))))
 
 (defun %queue-empty-p (queue)
   (null (queue-contents queue)))
@@ -45,13 +44,13 @@
 
 (defun enqueue (queue obj)
   "Adds an element to the queue."
-  (with-mutex ((queue-mutex queue))
+  (with-lock-held ((queue-lock queue))
     (%enqueue queue obj)
-    (condition-notify (queue-waitqueue queue))))
+    (condition-notify (queue-condition queue))))
 
 (defun dequeue (queue &optional default)
   "Removes an element from the queue. Returns DEFAULT If the queue is empty."
-  (with-mutex ((queue-mutex queue))
+  (with-lock-held ((queue-lock queue))
     (if (%queue-empty-p queue)
 	default
 	(%dequeue queue))))
@@ -59,14 +58,14 @@
 (defun blocking-dequeue (queue)
   "Removes an element from the queue. If the queue is empty, blocks until
 another thread adds an element."
-  (with-mutex ((queue-mutex queue))
+  (with-lock-held ((queue-lock queue))
     (if (%queue-empty-p queue)
-	(loop (condition-wait (queue-waitqueue queue) (queue-mutex queue))
+	(loop (condition-wait (queue-condition queue) (queue-lock queue))
 	      (unless (%queue-empty-p queue)
 		(return (%dequeue queue))))
 	(%dequeue queue))))
 
 (defun queue-empty-p (queue)
   "True if the given queue is empty; false otherwise."
-  (with-mutex ((queue-mutex queue))
+  (with-lock-held ((queue-lock queue))
     (%queue-empty-p queue)))
