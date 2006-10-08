@@ -27,7 +27,7 @@
   (let ((server-sock
 	 (make-instance 'inet-socket :type :stream :protocol :tcp)))
     (setf *server-sock* server-sock)
-    (socket-bind server-sock #(127 0 0 1) *port*)
+    (socket-bind server-sock *address* *port*)
     (socket-listen server-sock 8)
     (setf *server-thread*
 	  (make-thread-with-standard-specials
