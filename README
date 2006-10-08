@@ -1,0 +1,11 @@
+REQUIREMENTS
+------------
+
+ * SBCL (tested with 0.9.16)
+ * Bordeaux threads (http://common-lisp.net/project/bordeaux-threads)
+
+SBCL is necessary because Monster Mountain uses the sb-bsd-sockets API
+for networking. I'm currently working on getting support for passive
+(connection-accepting) sockets into usocket
+(http://common-lisp.net/project/usocket). Once my patch is accepted,
+I'll be able to port Monster Mountain to usocket.
