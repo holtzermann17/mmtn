@@ -27,4 +27,5 @@
 		 (:file "queue" :depends-on ("util"))
 		 (:file "client" :depends-on ("util" "queue"))
 		 (:file "server" :depends-on ("util" "logger" "client"))
-		 (:file "protocol" :depends-on ("util" "client"))))
+		 (:file "protocol" :depends-on ("util" "client"))
+		 (:file "commands" :depends-on ("protocol" "util"))))

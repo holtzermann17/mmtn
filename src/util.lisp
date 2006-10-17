@@ -71,3 +71,31 @@ special variables to carry over to the new thread. 25 characters."
   "Like MAKE-THREAD-WITH-SPECIALS, but the specials list is fixed to
 *STANDARD-SPECIALS*. 32 characters."
   `(make-thread-with-specials ,*standard-specials* ,fun :name ,name))
+
+(defun whitespace-p (char)
+  "True if the given character is whitespace. False otherwise."
+  (or (eq #\Space char) (eq #\Tab char) (eq #\Return char) (eq #\Newline char)))
+
+(defun read-while (predicate &optional (stream *standard-input*))
+  "Reads characters from STREAM while they satisfy PREDICATE. Stops at EOF."
+  (let ((string-buf (make-array '(10) :element-type 'character :adjustable t
+				:fill-pointer 0)))
+    (loop (let* ((char (peek-char nil stream nil)))
+	    (cond ((or (null char) (not (funcall predicate char)))
+		   (return (concatenate 'string string-buf)))
+		  (t (vector-push-extend (read-char stream) string-buf)))))))
+
+(defun skip-while (predicate &optional (stream *standard-input*))
+  "Discards characters from STREAM while they satisfy PREDICATE. Stops at EOF."
+  (loop (let* ((char (peek-char nil stream nil)))
+	  (if (or (null char) (not (funcall predicate char)))
+	      (return)
+	      (read-char stream)))))
+
+(defun read-until (predicate &optional (stream *standard-input*))
+  "Same as READ-WHILE, but negates PREDICATE."
+  (read-while (complement predicate) stream))
+
+(defun skip-until (predicate &optional (stream *standard-input*))
+  "Same as SKIP-WHILE, but negates PREDICATE."
+  (skip-while (complement predicate) stream))

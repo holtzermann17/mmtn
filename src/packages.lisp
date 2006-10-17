@@ -17,9 +17,5 @@
 
 ;; Package definitions.
 
-(unless (member :sbcl *features*)
-  (error "Sorry, mmtn only runs under SBCL at the moment. This will change
-in the future."))
-
 (defpackage :mmtn
   (:use :cl :sb-bsd-sockets :bordeaux-threads))

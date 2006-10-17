@@ -156,9 +156,18 @@ event. False otherwise."))
 	   (input-event-text event)))
 
 (defmacro with-client-input (var &body body)
-  "Reads a line from the client and executes BODY with the string bound to
-VAR. Abstracts out all of the event handling nonsense. Returns T if the body
-was executed, and NIL otherwise."
+  "Reads a line from the client and executes BODY with the string
+bound to VAR. Abstracts out all of the event handling
+nonsense. ACHTUNG! This should ALWAYS ALWAYS ALWAYS be called
+tail-recursively so that flow control immediately returns to the event
+loop from the event handler. In other words, it must be the last
+expression in the function, and all calls above the function must be
+tail calls. Life would be simpler if we had continuations."
+  ;; Okay, so you want to know what will happen if you don't return to
+  ;; the event loop after calling this? Fine, I'll tell you. The body
+  ;; won't be executed, and things will not work at all. Then the body
+  ;; will executed when you return to the event loop and input
+  ;; arrives. Avoid these wacky semantics, and just don't do it.
   `(%with-client-input #'(lambda (,var) ,@body t)))
 
 (defun %with-client-input (fun)
@@ -172,6 +181,8 @@ was executed, and NIL otherwise."
 		(setf (client-input-handler *current-client*) fun)
 		(release-lock input-lock)
 		nil))))
+
+;; XXX: Define a macro to define wrappers over WITH-CLIENT-INPUT.
 
 (defun client-message (format &rest args)
   "Sends a message to the client from a client thread."
