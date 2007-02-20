@@ -182,16 +182,6 @@ tail calls. Life would be simpler if we had continuations."
 		(release-lock input-lock)
 		nil))))
 
-(defmacro def-input-processor (name input-var function-var lambda-list
-			       &body body)
-  "Defines a new input processor macro."
-  (let ((function-name (intern (format nil "%~A" (symbol-name name))
-			       (symbol-package name)))) 
-  `(progn
-    (defmacro ,name (,var ,lambda-list &body body)
-      `(,',function-name #'(lambda (,var) ,@body)))
-    (defun ,function-name ,(cons function-var lambda-list)
-
 (defun client-message (format &rest args)
   "Sends a message to the client from a client thread."
   (apply #'format (client-sock-stream *current-client*) format args))
