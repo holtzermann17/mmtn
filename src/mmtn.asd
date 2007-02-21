@@ -19,7 +19,7 @@
     :version "0.0.0"
     :author "Nick Thomas <jesuswaffle@gmail.com>"
     :licence "GPLv2"
-    :depends-on (:sb-bsd-sockets :bordeaux-threads)
+    :depends-on (:usocket :bordeaux-threads)
     :components ((:file "packages")
 		 (:file "config" :depends-on ("packages"))
 		 (:file "util" :depends-on ("packages" "config"))

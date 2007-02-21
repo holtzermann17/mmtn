@@ -18,4 +18,4 @@
 ;; Package definitions.
 
 (defpackage :mmtn
-  (:use :cl :sb-bsd-sockets :bordeaux-threads))
+  (:use :cl :usocket :bordeaux-threads))

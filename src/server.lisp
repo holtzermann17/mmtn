@@ -24,15 +24,11 @@
   "Holds the server socket.")
 
 (defun start-server ()
-  (let ((server-sock
-	 (make-instance 'inet-socket :type :stream :protocol :tcp)))
-    (setf *server-sock* server-sock)
-    (socket-bind server-sock *address* *port*)
-    (socket-listen server-sock 8)
-    (setf *server-thread*
-	  (make-thread-with-standard-specials
-	   (fn (loop (add-client (socket-accept server-sock))))
-	   :name "mmtn-server"))))
+  (setf *server-sock* (socket-listen *address* *port*))
+  (setf *server-thread*
+        (make-thread-with-standard-specials
+         (fn (loop (add-client (socket-accept *server-sock*))))
+         :name "mmtn-server")))
 
 (defun stop-server ()
   (if (null *server-thread*)

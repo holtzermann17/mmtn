@@ -20,8 +20,7 @@
 (defclass client ()
   ((thread :accessor client-thread)
    (listener-thread :accessor client-listener-thread)
-   (socket :reader client-socket :initarg :socket :type socket)
-   (sock-stream :reader client-sock-stream :initarg :sock-stream)
+   (socket :reader client-socket :initarg :socket :type usocket)
    (event-queue :reader client-event-queue :initform (make-empty-queue)
 		:type queue)
    (need-input-lock :reader client-need-input-lock :initform (make-lock))
@@ -72,9 +71,7 @@ event. False otherwise."))
   "Adds a new client connected to the given socket."
   (let ((client (make-instance
 		 'client :socket sock
-		 :sock-stream (socket-make-stream sock :input t :output t
-						  :buffering :line)
-		 :ip-addr (format-ip-addr (socket-peername sock)))))
+		 :ip-addr (format-ip-addr (get-peer-address sock)))))
     (message :info "New client: ~A" (client-ip-addr client))
     (with-lock-held (%*clients-lock*) (push client %*clients*))
     (setf (client-listener-thread client)
@@ -131,7 +128,7 @@ event. False otherwise."))
 
 (defun run-client-listener (client)
   "Listens on a client's socket and sends input events."
-  (let ((input-stream (client-sock-stream client)))
+  (let ((input-stream (socket-stream (client-socket client))))
     (unwind-protect
 	 (loop named main-loop
 	       do (let ((line (read-line input-stream nil)))
@@ -182,6 +179,21 @@ tail calls. Life would be simpler if we had continuations."
 		(release-lock input-lock)
 		nil))))
 
+;; XXX: I don't remember what this is for, but it looks useful.
+(defmacro def-input-processor (name input-var function-var lambda-list
+			       &body body)
+  "Defines a new input processor macro."
+  (let ((function-name (intern (format nil "%~A" (symbol-name name))
+			       (symbol-package name)))) 
+  `(progn
+    (defmacro ,name (var ,@lambda-list &body body)
+      `(,',function-name #'(lambda (,var) ,@body)))
+    (defun ,function-name ,(cons function-var lambda-list)
+      (declare (function ,function-var))
+      (with-client-input ,input-var ,@body)))))
+
 (defun client-message (format &rest args)
   "Sends a message to the client from a client thread."
-  (apply #'format (client-sock-stream *current-client*) format args))
+  (let ((stream (socket-stream (client-socket *current-client*))))
+    (apply #'format stream format args)
+    (finish-output stream)))
