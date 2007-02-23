@@ -53,7 +53,8 @@ form (NAME PARSER). You gave: ~S." a))
 	     (if (not (symbolp (car a)))
 		 (error "The car of the arg-spec must be an argument name."))
 	     (if (not (gethash (cdr a) *parsers*))
-		 (error "Undefined parser: ~S." a)))))
+		 (error "Undefined parser: ~S." a)))
+        arg-spec))
 
 (defmacro defparser (name &body body)
   "Defines a new parser."

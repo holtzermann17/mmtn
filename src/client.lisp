@@ -33,7 +33,8 @@
    (listener-done-p :accessor client-listener-done-p :initform nil)
    (listener-done-condition :reader client-listener-done-condition
 			:initform (make-condition-variable))
-   (ip-addr :reader client-ip-addr :initarg :ip-addr :type string)))
+   (ip-addr :reader client-ip-addr :initarg :ip-addr :type string)
+   (exit-requested-p :accessor client-exit-requested-p :initform nil)))
 
 (defclass event () ()
   (:documentation "The superclass for events."))
@@ -103,8 +104,7 @@ event. False otherwise."))
       (locked-setf %*clients-lock* %*clients*
 		   (delete client (the list %*clients*) :test #'eq))
       (message :info "Client ~A disconnected" (client-ip-addr client))
-      ;; XXX: Remove this, figure out some other way to signal termination.
-      (sb-ext:quit))))
+      (setf (client-exit-requested-p client) t))))
 
 (defun for-each-client (fun)
   (declare (function fun))
@@ -113,10 +113,12 @@ event. False otherwise."))
 
 (defun run-client ()
   "Runs the client event loop."
-  ;; This is defined in protcol.lisp.
+  ;; CLIENT-MAIN is defined in protocol.lisp.
   (client-main)
-  (loop (let ((event (blocking-dequeue (client-event-queue *current-client*))))
-	  (process-event event))))
+  (loop until (client-exit-requested-p *current-client*)
+        do (let ((event (blocking-dequeue
+                         (client-event-queue *current-client*))))
+             (process-event event))))
 
 (defun send-event (event &optional (client *current-client*))
   "Sends an event to a single client: the current, by default."
