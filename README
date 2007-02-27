@@ -106,5 +106,5 @@ thread uncleanly, which also leaves some garbage hanging around in the
 system.
 
 So you'd need to surround the EVAL with an error trap that does
-something sensible.
+something sensible.  (See ./contrib/lisp-evaluator-error-catching.patch.)
 
