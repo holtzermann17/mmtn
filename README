@@ -1,11 +1,110 @@
+
 REQUIREMENTS
 ------------
 
- * SBCL (tested with 0.9.16)
+ * A Lisp with thread support
  * Bordeaux threads (http://common-lisp.net/project/bordeaux-threads)
+ * usocket (http://common-lisp.net/project/usocket/)
+ * split-sequence (http://www.cliki.net/SPLIT-SEQUENCE)
 
-SBCL is necessary because Monster Mountain uses the sb-bsd-sockets API
-for networking. I'm currently working on getting support for passive
-(connection-accepting) sockets into usocket
-(http://common-lisp.net/project/usocket). Once my patch is accepted,
-I'll be able to port Monster Mountain to usocket.
+INSTALLATION
+------------
+
+1. Get the required source code.
+
+(These code-retrieval commands work as of Feb 26, 2007.)
+
+darcs get http://common-lisp.net/project/bordeaux-threads/darcs/bordeaux-threads/
+svn checkout svn://common-lisp.net/project/usocket/svn/usocket/trunk usocket-svn
+
+(Optional: this sets your cclan mirror to Nice, France.)
+wget "http://ww.telent.net/cclan-choose-mirror?M=http%3A%2F%2Fthingamy.com%2Fcclan%2F"
+
+wget http://ww.telent.net/cclan/split-sequence.tar.gz
+svn checkout http://mmtn.googlecode.com/svn/trunk/ mmtn
+
+2. Expose the relevant .asd files to LISP.
+
+See http://www.cliki.net/asdf for generic information on how to use
+ASDF.  The basic idea is: in a directory that ASDF will search, run
+commands like these:
+
+ln -s ~/bordeaux-threads/bordeaux-threads.asd .
+ln -s ~/usocket-svn/usocket.asd .
+ln -s ~/split-sequence/split-sequence.asd
+ln -s ~/mmtn/src/mmtn.asd .
+
+3.  (optional) Edit src/config.lisp in the Monster Mountain directory
+to change the server parameters, if desired.  By default, unless you
+edit config.lisp, the server will run on localhost only, and listen
+for connections on port 4141.
+
+4. Load Monster Mountain into a Lisp instance with:  (asdf:oos 'asdf:load-op 'mmtn)
+
+5. Go into the MMTN package:  (in-package mmtn)
+
+6. Start the server:  (start-server)
+
+7. From your shell, netcat the server: nc localhost 4141
+
+(Unless you changed the port.)  A message should appear on your Lisp
+console indicating a new client with IP address 127.0.0.1.
+
+8. Under netcat, type in the integer 1, and press enter.  This tells
+the server the protocol revision number that you'll be talking to it
+with. The server will echo back a 1, indicating that it supports
+protocol revision 1, and you should talk to it with that protocol. If
+it didn't support protocol revision 1, and, for instance, it only
+supported up to revision 0, it would have echoed back '0', to indicate
+that you should talk to it with protocol version 0.
+
+If everything works, you should be connected to a server which will
+echo back everything you type.
+
+9. To disconnect, press ctrl-c on netcat.  You should get a message on
+your Lisp console indicating that the client from 127.0.0.1
+disconnected.
+
+
+ADDITIONAL INFO
+---------------
+
+Monster Mountain uses Bordeaux Threads
+(http://common-lisp.net/project/bordeaux-threads/), which is a
+mutex-based threading API. You probably won't find a good introduction
+to threading using Bordeaux, but there are plenty of good
+introductions for other APIs. If you're familiar with C, and have
+access to a UNIX machine, you might find this document helpful:
+
+http://vergil.chemistry.gatech.edu/resources/programming/threads.html
+
+Monster Mountain was originally written using the SBCL sockets API for
+networking.  Erik Huelsmann kindly finished the server socket support
+for usocket, which meant that Monster Mountain could be ported to it,
+thus removing the SBCL dependency.
+
+Modifying the server to instead act as a REPL would be pretty trivial;
+in fact, a bare-bones REPL would only require changing one line of
+code. Here's the necessary change:
+
+Index: src/protocol.lisp
+===================================================================
+--- src/protocol.lisp   (revision 15)
++++ src/protocol.lisp   (working copy)
+@@ -39,5 +39,5 @@
+  "Iteratively reads and processes commands."
+  (with-client-input line
+    ;; XXX
+-    (client-message "~A~%" line)
++    (client-message "~S~%" (eval (read (make-string-input-stream line))))
+    (command-loop)))
+
+The problem that immediately comes to mind with this setup is that, if
+the code you run triggers an error, it'll pop up a debugger on the
+server side, and then you'll have to terminate the server's client
+thread uncleanly, which also leaves some garbage hanging around in the
+system.
+
+So you'd need to surround the EVAL with an error trap that does
+something sensible.
+
