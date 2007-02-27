@@ -73,7 +73,7 @@ event. False otherwise."))
   (let ((client (make-instance
 		 'client :socket sock
 		 :ip-addr (format-ip-addr (get-peer-address sock)))))
-    (message :info "New client: ~A" (client-ip-addr client))
+    (log-message :info "New client: ~A" (client-ip-addr client))
     (with-lock-held (%*clients-lock*) (push client %*clients*))
     (setf (client-listener-thread client)
 	  (make-thread-with-standard-specials
@@ -103,7 +103,7 @@ event. False otherwise."))
       (socket-close (client-socket client))
       (locked-setf %*clients-lock* %*clients*
 		   (delete client (the list %*clients*) :test #'eq))
-      (message :info "Client ~A disconnected" (client-ip-addr client))
+      (log-message :info "Client ~A disconnected" (client-ip-addr client))
       (setf (client-exit-requested-p client) t))))
 
 (defun for-each-client (fun)

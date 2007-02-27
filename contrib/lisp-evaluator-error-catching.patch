@@ -1,0 +1,18 @@
+*** /Users/jcorneli/musn/mmtn/src/protocol.lisp	Thu Feb 22 02:13:37 2007
+--- /Users/jcorneli/mmtn/src/protocol.lisp	Mon Feb 26 19:33:20 2007
+***************
+*** 39,43 ****
+    "Iteratively reads and processes commands."
+    (with-client-input line
+      ;; XXX
+!     (client-message "~A~%" line) 
+      (command-loop)))
+--- 39,47 ----
+    "Iteratively reads and processes commands."
+    (with-client-input line
+      ;; XXX
+!     (client-message "~S~%" 
+!                     (handler-case (eval (read (make-string-input-stream line)))
+!                                   (error () (progn (client-message "Lisp Error!~%")
+!                                                    nil))))
+      (command-loop)))

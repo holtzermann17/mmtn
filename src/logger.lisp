@@ -22,6 +22,6 @@
 (in-package mmtn)
 
 ;; LEVEL is one of (:INFO :WARNING :ERROR :FATAL)
-(defun message (level format-string &rest format-arguments)
+(defun log-message (level format-string &rest format-arguments)
   "Records a log message."
   (format t "~A: ~?~%" level format-string format-arguments))
