@@ -21,4 +21,4 @@
   (:use :cl :usocket :bordeaux-threads))
 
 (defpackage :mmtn-db
-  (:use :cl :usocket :bordeaux-threads :md5 :ieee-floats :trivial-utf-8 :postmodern))
+  (:use :cl :postmodern))

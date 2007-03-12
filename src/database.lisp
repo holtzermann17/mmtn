@@ -31,72 +31,72 @@
 (defmacro defalias (new old)
   `(defun ,new (&rest args) (apply ',old args))) 
 
-(defun mmtn-postmodern-add-string (str)
+(defun postmodern-add-string (str)
   "Add STR to the strs table."
   ;; it would be handy if we could *return* the index corresponding to
   ;; new newly added string (instead of `nil').
   (execute (:insert-into 'strs :set 'string str)))
 
-(defalias mmtn-db-add-string mmtn-postmodern-add-string)
+(defalias add-string postmodern-add-string)
 
-(defun mmtn-postmodern-string-present-p (str)
+(defun postmodern-string-present-p (str)
   "Return the id# of STR, if present; nil otherwise."
   (query (:select 'strid :from 'strs :where (:= 'string str)) :single))
 
-(defalias mmtn-db-string-present-p mmtn-postmodern-string-present-p)
+(defalias string-present-p postmodern-string-present-p)
 
-(defun mmtn-postmodern-id-to-string (id)
+(defun postmodern-id-to-string (id)
   "Return the string corresponding to ID, if present; nil otherwise."
   (query (:select 'string :from 'strs :where (:= 'strid id)) :single))
 
-(defalias mmtn-db-id-to-string mmtn-postmodern-id-to-string)
+(defalias id-to-string postmodern-id-to-string)
 
-(defun mmtn-postmodern-add-relation (mid beg end)
+(defun postmodern-add-relation (mid beg end)
   "Add a relation, also adding strings in the relation (as needed)."
-  (let ((mid-id (or (mmtn-db-string-present-p mid)
-                    (progn (mmtn-db-add-string mid)
-                           (mmtn-db-string-present-p mid))))
-        (beg-id (or (mmtn-db-string-present-p beg)
-                    (progn (mmtn-db-add-string beg)
-                           (mmtn-db-string-present-p beg))))
-        (end-id (or (mmtn-db-string-present-p end)
-                    (progn (mmtn-db-add-string end)
-                           (mmtn-db-string-present-p end)))))
+  (let ((mid-id (or (string-present-p mid)
+                    (progn (add-string mid)
+                           (string-present-p mid))))
+        (beg-id (or (string-present-p beg)
+                    (progn (add-string beg)
+                           (string-present-p beg))))
+        (end-id (or (string-present-p end)
+                    (progn (add-string end)
+                           (string-present-p end)))))
     (execute (:insert-into 'rels :set 'beginningid beg-id
                                       'middleid mid-id
                                       'endid end-id))))
 
-(defalias mmtn-db-add-relation mmtn-postmodern-add-relation)
+(defalias add-relation postmodern-add-relation)
 
-(defun mmtn-postmodern-get-outbound-relations (str)
-  (let ((id (mmtn-db-string-present-p str)))
+(defun postmodern-get-outbound-relations (str)
+  (let ((id (string-present-p str)))
     (when id
       (mapcar (lambda (relation)
-                (mapcar #'mmtn-db-id-to-string relation))
+                (mapcar #'id-to-string relation))
               (query (:select 'beginningid 'middleid 'endid
                       :from 'rels
                       :where (:= 'beginningid id)) :rows)))))
 
-(defalias mmtn-db-get-outbound-relations mmtn-postmodern-get-outbound-relations)
+(defalias get-outbound-relations postmodern-get-outbound-relations)
 
-(defun mmtn-postmodern-get-inbound-relations (str)
-  (let ((id (mmtn-db-string-present-p str)))
+(defun postmodern-get-inbound-relations (str)
+  (let ((id (string-present-p str)))
     (when id
       (mapcar (lambda (relation)
-                (mapcar #'mmtn-db-id-to-string relation))
+                (mapcar #'id-to-string relation))
               (query (:select 'beginningid 'middleid 'endid
                       :from 'rels
                       :where (:= 'endid id)) :rows)))))
 
-(defalias mmtn-db-get-inbound-relations mmtn-postmodern-get-inbound-relations)
+(defalias get-inbound-relations postmodern-get-inbound-relations)
 
-(defun mmtn-postmodern-get-bound-relations (str)
-  (let ((id (mmtn-db-string-present-p str)))
+(defun postmodern-get-bound-relations (str)
+  (let ((id (string-present-p str)))
     (when id
       (mapcar (lambda (relation)
-                (mapcar #'mmtn-db-id-to-string relation))
+                (mapcar #'id-to-string relation))
               (query (:select 'beginningid 'middleid 'endid
                       :from 'rels
                       :where (:= 'middleid id)) :rows)))))
 
-(defalias mmtn-db-get-bound-relations mmtn-postmodern-get-bound-relations)
+(defalias get-bound-relations postmodern-get-bound-relations)
