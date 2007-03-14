@@ -21,7 +21,7 @@
 ;; database-drivers.  Right now, I'm setting things up to use the
 ;; Postmodern database-driver and PostGreSQL.
 
-(in-package mmtn-db)
+(in-package musn)
 
 ;; I searched google groups for "defmacro defalias"; combined ideas
 ;; from the comp.lang.lisp threads "multiple return values" and

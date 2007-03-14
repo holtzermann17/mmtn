@@ -107,4 +107,3 @@ system.
 
 So you'd need to surround the EVAL with an error trap that does
 something sensible.  (See ./contrib/lisp-evaluator-error-catching.patch.)
-

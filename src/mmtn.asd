@@ -19,7 +19,7 @@
     :version "0.0.0"
     :author "Nick Thomas <jesuswaffle@gmail.com>"
     :licence "GPLv2"
-    :depends-on (:usocket :bordeaux-threads :postmodern)
+    :depends-on (:usocket :bordeaux-threads)
     :components ((:file "packages")
                  (:file "config" :depends-on ("packages"))
                  (:file "util" :depends-on ("packages" "config"))
@@ -28,5 +28,4 @@
                  (:file "client" :depends-on ("util" "queue"))
                  (:file "server" :depends-on ("util" "logger" "client"))
                  (:file "protocol" :depends-on ("util" "client"))
-                 (:file "commands" :depends-on ("protocol" "util"))
-                 (:file "database" :depends-on ("packages"))))
+                 (:file "commands" :depends-on ("protocol" "util"))))
