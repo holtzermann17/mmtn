@@ -21,11 +21,8 @@
     :licence "GPLv2"
     :depends-on (:usocket :bordeaux-threads)
     :components ((:file "packages")
-                 (:file "config" :depends-on ("packages"))
-                 (:file "util" :depends-on ("packages" "config"))
+                 (:file "util" :depends-on ("packages"))
                  (:file "logger" :depends-on ("util"))
                  (:file "queue" :depends-on ("util"))
                  (:file "client" :depends-on ("util" "queue"))
-                 (:file "server" :depends-on ("util" "logger" "client"))
-                 (:file "protocol" :depends-on ("util" "client"))
-                 (:file "commands" :depends-on ("protocol" "util"))))
+                 (:file "server" :depends-on ("util" "logger" "client"))))

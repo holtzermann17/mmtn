@@ -17,27 +17,47 @@
 
 (in-package mmtn)
 
-(defvar *server-thread* ()
-  "Holds the server thread.")
+(defvar *default-address* #(0 0 0 0)
+  "The default IP address for servers to bind to.")
 
-(defvar *server-sock* ()
-  "Holds the server socket.")
+(defvar *servers* (make-hash-table)
+  "The list of servers, as a hash table from port to server object.")
 
-(defun start-server ()
-  (setf *server-sock* (socket-listen *address* *port*))
-  (setf *server-thread*
-        (make-thread-with-standard-specials
-         (fn (loop (add-client (socket-accept *server-sock*))))
-         :name "mmtn-server")))
+(defclass server ()
+  ((thread :accessor server-thread :initarg :thread)
+   (socket :accessor server-socket :initarg :socket :type usocket)
+   ;; XXX: Using a list for the clients makes for rather inefficient
+   ;; removal. This may have to be changed.
+   (clients :accessor server-clients :initform ())
+   (clients-lock :accessor server-clients-lock :initform (make-lock))
+   (client-main-function :initarg :client-main-function
+                         :accessor server-client-main-function)
+   (client-input-function :initarg :client-input-function
+                          :accessor server-client-input-function)))
 
-(defun stop-server ()
-  (if (null *server-thread*)
-      (log-message :warning "Server not running, not stopping anything.")
-      (progn (log-message :warning "Stopping server now!")
-	     (log-message :info "Not accepting new connections...") 
-	     (destroy-thread *server-thread*)
-	     (socket-close *server-sock*)
-	     (setf *server-sock* nil)
-	     (setf *server-thread* nil)
-	     (log-message :info "Disconnecting all clients...")
-	     (for-each-client #'remove-client))))
+(defun start-server (&key port
+                     client-main-function
+                     client-input-function
+                     (address *default-address*))
+  (let* ((sock (socket-listen address port))
+         (server (make-instance
+                  'server
+                  :client-main-function client-main-function
+                  :client-input-function client-input-function
+                  :socket sock)))
+    (setf (server-thread server)
+          (make-thread-with-standard-specials
+           (fn (loop (add-client server (socket-accept sock))))))
+    (setf (gethash port *servers*) server)))
+
+(defun stop-server (port)
+  (let ((server (gethash port *servers*)))
+    (if (null server)
+        (log-message :warning "Server not running, not stopping anything.")
+        (progn
+          (log-message :warning "Stopping server now!")
+          (log-message :info "Not accepting new connections...")
+          (destroy-thread (server-thread server))
+          (socket-close (server-socket server))
+          (log-message :info "Disconnecting all clients...")
+          (for-each-client server #'remove-client)))))
