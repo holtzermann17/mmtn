@@ -18,6 +18,11 @@
 (defmacro defalias (new old)
   `(defun ,new (&rest args) (apply ',old args))) 
 
+(defun postmodern-start ()
+  (asdf:oos 'asdf:load-op :postmodern)
+  (use-package :postmodern)
+  (connect-toplevel "musn" "jcorneli" "" "localhost"))
+
 (defun postmodern-add-string (str)
   "Add STR to the strs table."
   ;; it would be handy if we could *return* the index corresponding to

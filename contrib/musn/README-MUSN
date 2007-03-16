@@ -1,0 +1,7 @@
+To fire up the connection to the database,
+
+(in-package musn)
+(postmodern-start)
+
+Note: if you aren't me, then you'll need to modify that function so
+that it connects to the appropriate database.
