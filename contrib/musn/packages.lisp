@@ -1,5 +1,6 @@
-;; Joe, I grant you copyright on this file. Put your copyright stuff
-;; here.
+;; Multi-User Semantic Net
+;; Copyright (C) 2007 Joe Corneli
+;; Copyright transfered to public domain.
 
 ;; Package definitions.
 

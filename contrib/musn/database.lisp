@@ -1,22 +1,9 @@
-;; database interaction for Monster Mountain
+;; database interaction for MUSN
 ;; Copyright (C) 2007 Joseph Corneli
-;;
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of version 2 of the GNU General Public
-;; License as published by the Free Software Foundation; the terms of
-;; any later version are NOT APPLICABLE.
-;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-;;
-;; You should have received a copy of the GNU General Public License along
-;; with this program; if not, write to the Free Software Foundation, Inc.,
-;; 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+;; Copyright transfered to public domain.
 
-;; I am defining a package mmtn-db to support interaction between the
-;; Monster Mountain core and a database backend.  I'm hoping I can set
+;; I am defining a package to support interaction between Lisp and a
+;; database storing the semantic net's data.  I'm hoping I can set
 ;; things up so that we can easily swap out databases and
 ;; database-drivers.  Right now, I'm setting things up to use the
 ;; Postmodern database-driver and PostGreSQL.
