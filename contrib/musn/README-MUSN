@@ -1,7 +1,20 @@
-To fire up the connection to the database,
+MUSN==MULTI-USER SEMANTIC NETWORK
+
+M ~ see Monster Mountain
+U ~ see users.lisp (in progress)
+S ~ <to be written>
+N ~ see database.lisp
+
+To fire up a connection to the database,
 
 (in-package musn)
-(postmodern-start)
+(database-start)
 
-Note: if you aren't me, then you'll need to modify that function so
-that it connects to the appropriate database.
+Note: if you aren't me, then you'll probably need to modify the
+function `postmodern-start' (from database.lisp) so that it connects
+to the appropriate database.
+
+Agenda
+
+1. Simple user interactions
+2. More interesting "semantic" behavior

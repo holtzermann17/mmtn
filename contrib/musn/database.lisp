@@ -23,6 +23,8 @@
   (use-package :postmodern)
   (connect-toplevel "musn" "jcorneli" "" "localhost"))
 
+;; Note that this function gives an error when the database already
+;; contains STR.  I don't quite know how to handle this error.
 (defun postmodern-add-string (str)
   "Add STR to the strs table."
   ;; it would be handy if we could *return* the index corresponding to
@@ -36,6 +38,7 @@
   (query (:select 'strid :from 'strs :where (:= 'string str)) :single))
 
 (defalias string-present-p postmodern-string-present-p)
+(defalias string-to-id string-present-p)
 
 (defun postmodern-id-to-string (id)
   "Return the string corresponding to ID, if present; nil otherwise."
@@ -43,14 +46,14 @@
 
 (defalias id-to-string postmodern-id-to-string)
 
-(defun postmodern-add-relation (mid beg end)
+(defun postmodern-add-relation (beg mid end)
   "Add a relation, also adding strings in the relation (as needed)."
-  (let ((mid-id (or (string-present-p mid)
-                    (progn (add-string mid)
-                           (string-present-p mid))))
-        (beg-id (or (string-present-p beg)
+  (let ((beg-id (or (string-present-p beg)
                     (progn (add-string beg)
                            (string-present-p beg))))
+        (mid-id (or (string-present-p mid)
+                    (progn (add-string mid)
+                           (string-present-p mid))))
         (end-id (or (string-present-p end)
                     (progn (add-string end)
                            (string-present-p end)))))
@@ -70,6 +73,7 @@
                       :where (:= 'beginningid id)) :rows)))))
 
 (defalias get-outbound-relations postmodern-get-outbound-relations)
+(defalias get-relations-given-beg get-outbound-relations)
 
 (defun postmodern-get-inbound-relations (str)
   (let ((id (string-present-p str)))
@@ -81,6 +85,7 @@
                       :where (:= 'endid id)) :rows)))))
 
 (defalias get-inbound-relations postmodern-get-inbound-relations)
+(defalias get-relations-given-end get-inbound-relations)
 
 (defun postmodern-get-bound-relations (str)
   (let ((id (string-present-p str)))
@@ -92,3 +97,59 @@
                       :where (:= 'middleid id)) :rows)))))
 
 (defalias get-bound-relations postmodern-get-bound-relations)
+(defalias get-relations-given-mid get-bound-relations)
+
+(defun postmodern-get-relations-given-mid-end (middle-str end-str)
+  (let ((middle-id (string-present-p middle-str))
+        (end-id (string-present-p end-str)))
+    (when (and middle-id end-id)
+      (mapcar (lambda (relation)
+                (mapcar #'id-to-string relation))
+              (query (:select 'beginningid 'middleid 'endid
+                      :from 'rels
+                      :where (:and (:= 'middleid middle-id)
+                                   (:= 'endid end-id))) :rows)))))
+
+(defalias get-relations-given-mid-end postmodern-get-relations-given-mid-end)
+
+(defun postmodern-get-relations-given-beg-end (beginning-str end-str)
+  (let ((beginning-id (string-present-p beginning-str))
+        (end-id (string-present-p end-str)))
+    (when (and beginning-id end-id)
+      (mapcar (lambda (relation)
+                (mapcar #'id-to-string relation))
+              (query (:select 'beginningid 'middleid 'endid
+                      :from 'rels
+                      :where (:and (:= 'beginningid beginning-id)
+                                   (:= 'endid end-id))) :rows)))))
+
+(defalias get-relations-given-beg-end postmodern-get-relations-given-beg-end)
+
+(defun postmodern-get-relations-given-beg-mid (beginning-str middle-str)
+  (let ((beginning-id (string-present-p beginning-str))
+        (middle-id (string-present-p middle-str)))
+    (when (and beginning-id middle-id)
+      (mapcar (lambda (relation)
+                (mapcar #'id-to-string relation))
+              (query (:select 'beginningid 'middleid 'endid
+                      :from 'rels
+                      :where (:and (:= 'beginningid beginning-id)
+                                   (:= 'middle middle-id))) :rows)))))
+
+(defalias get-relations-given-beg-mid postmodern-get-relations-given-beg-mid)
+
+(defun postmodern-relation-present-p (beginning-str middle-str end-str)
+  "Return the id# of STR, if present; nil otherwise."
+  (let ((beginning-id (string-present-p beginning-str))
+        (middle-id (string-present-p middle-str))
+        (end-id (string-present-p end-str)))
+    (when (and beginning-id middle-id end-id)
+      ;; if we just want the predicate `relation-present-p'
+      ;; then probably no need to convert to strings as we
+      ;; do here
+      (mapcar #'id-to-string
+              (query (:select 'beginningid 'middleid 'endid
+                      :from 'rels
+                      :where (:and (:= 'beginningid beginning-id)
+                                   (:= 'middleid middle-id)
+                                   (:= 'endid end-id))) :row)))))
