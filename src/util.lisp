@@ -31,9 +31,9 @@
   "Shortcuts a two-argument lambda."
   `#'(lambda (a b) ,@body))
 
-(defmacro aif (cond then &optional else)
+(defmacro aif (condition then &optional else)
   "Paul Graham's anaphoric IF."
-  `(let ((it ,cond))
+  `(let ((it ,condition))
     (if it ,then ,else)))
 
 (defun format-ip-addr (addr)
