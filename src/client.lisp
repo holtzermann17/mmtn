@@ -115,3 +115,13 @@ given server."
 (defun broadcast-event (event)
   "Sends an event to all clients that satisfy (NEEDS-TO-KNOW-P CLIENT EVENT)."
   XXX)
+
+(defun client-message (format &rest args)
+  "Sends a message to the client from a client thread."
+  (let ((stream (socket-stream (client-socket *current-client*))))
+    (apply #'format stream format args)
+    (finish-output stream)))
+
+(defun client-read ()
+  "Read a line coming from the client thread."
+  (read-line (socket-stream (client-socket *current-client*))))

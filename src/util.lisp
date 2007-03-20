@@ -23,14 +23,17 @@
   "Shortcuts a no-arguments lambda."
   `#'(lambda () ,@body))
 
+;;; XXX-jac: only used in this file
 (defmacro fna (&body body)
   "Shortcuts a one-argument lambda."
   `#'(lambda (a) ,@body))
 
+;;; XXX-jac: never used
 (defmacro fnab (&body body)
   "Shortcuts a two-argument lambda."
   `#'(lambda (a b) ,@body))
 
+;;; XXX-jac: never used
 (defmacro aif (condition then &optional else)
   "Paul Graham's anaphoric IF."
   `(let ((it ,condition))
@@ -45,6 +48,7 @@
   "Reloads the system."
   (asdf:operate 'asdf:load-op :mmtn))
 
+;;; XXX-jac: never used
 (deftype nullable (type)
   "Equivalent to (OR NULL TYPE)."
   `(or null ,type))
@@ -55,6 +59,7 @@
 
 ;; XXX: This is left over from when we were using SB-THREAD. Do we
 ;; still need it?
+;; XXX-jac: doesn't look like it; only ever used in this file.
 (defmacro make-thread-with-specials (specials fun &key name)
   "Like MAKE-THREAD, except that it causes the bindings of a number of listed
 special variables to carry over to the new thread. 25 characters."
@@ -63,18 +68,24 @@ special variables to carry over to the new thread. 25 characters."
       (make-thread (fn (let ,(mapcar #'list specials syms) (funcall ,fun)))
        :name ,name))))
 
+;; XXX-jac: only ever used in this file.
 (defvar *standard-specials*
   '(*standard-output*)
   "The standard list of special variables that should carry over.")
 
+;; XXX-jac: never used
 (defmacro make-thread-with-standard-specials (fun &key name)
   "Like MAKE-THREAD-WITH-SPECIALS, but the specials list is fixed to
 *STANDARD-SPECIALS*. 32 characters."
   `(make-thread-with-specials ,*standard-specials* ,fun :name ,name))
 
+;; XXX-jac: never used
 (defun whitespace-p (char)
   "True if the given character is whitespace. False otherwise."
   (or (eq #\Space char) (eq #\Tab char) (eq #\Return char) (eq #\Newline char)))
+
+;; XXX-jac: all of the following functions are not used outside of
+;; this file.
 
 (defun read-while (predicate &optional (stream *standard-input*))
   "Reads characters from STREAM while they satisfy PREDICATE. Stops at EOF."
