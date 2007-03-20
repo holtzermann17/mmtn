@@ -1,20 +1,32 @@
 MUSN==MULTI-USER SEMANTIC NETWORK
 
 M ~ see Monster Mountain
-U ~ see users.lisp (in progress)
+U ~ see musn.lisp
 S ~ <to be written>
 N ~ see database.lisp
 
-To fire up a connection to the database,
+Here's how my Lisp starts:
+
+(asdf:oos 'asdf:load-op 'mmtn)
+(asdf:oos 'asdf:load-op 'musn)
 
 (in-package musn)
 (database-start)
+
+(in-package mmtn)
+
+(start-server
+ :port 4143
+ :client-main-function #'musn::welcome
+ :client-input-function #'musn::input)
+
 
 Note: if you aren't me, then you'll probably need to modify the
 function `postmodern-start' (from database.lisp) so that it connects
 to the appropriate database.
 
-Agenda
 
-1. Simple user interactions
-2. More interesting "semantic" behavior
+Agenda items
+
+1. More interesting "semantic" behavior
+2. Improved user interactions
