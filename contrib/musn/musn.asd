@@ -6,4 +6,5 @@
     :components ((:file "packages")
                  (:file "musn" :depends-on ("packages"))
                  (:file "database" :depends-on ("packages"))
-                 (:file "users" :depends-on ("database"))))
+                 (:file "users" :depends-on ("database"))
+                 (:file "musn-user" :depends-on ("packages"))))

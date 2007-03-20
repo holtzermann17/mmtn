@@ -6,3 +6,6 @@
 
 (defpackage :musn
   (:use :cl :mmtn :postmodern))
+
+(defpackage :musn-user
+  (:use :cl))
