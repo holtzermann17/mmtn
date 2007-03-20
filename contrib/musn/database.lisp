@@ -23,6 +23,8 @@
   (use-package :postmodern)
   (connect-toplevel "musn" "jcorneli" "" "localhost"))
 
+(defalias database-start postmodern-start)
+
 ;; Note that this function gives an error when the database already
 ;; contains STR.  I don't quite know how to handle this error.
 (defun postmodern-add-string (str)
@@ -153,3 +155,5 @@
                       :where (:and (:= 'beginningid beginning-id)
                                    (:= 'middleid middle-id)
                                    (:= 'endid end-id))) :row)))))
+
+(defalias relation-present-p postmodern-relation-present-p)
