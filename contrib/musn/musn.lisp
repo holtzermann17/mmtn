@@ -47,7 +47,24 @@
                  (t (setq client-to-user-correspondence
                           (cons (cons mmtn::*current-client*
                                       input)
-                                client-to-user-correspondence)))))
+                                client-to-user-correspondence))
+                    (concatenate 'string "Welcome to the network, " input "!"))))
               (progn (mmtn::send-event
                       (make-instance 'stop-event :client mmtn::*current-client*))
                      (loop (sleep 1)))))))
+
+(defun login ()
+  "Prompt someone with a login.
+Just loop forever if they can't supply a valid user-name."
+  (mmtn::client-message "user name: ")
+  (let ((user (mmtn::client-read)))
+    (cond ((relation-present-p user "is a" "user")
+           (mmtn::client-message "logging in as ~a~%" user)
+           (format t 
+                   "logging in as ~a, current client is ~a~%" 
+                   user mmtn::*current-client*)
+           (cons (cons user mmtn::*current-client*)
+                 client-to-user-correspondence))
+          (t
+           (format t "Unknown user \"~a\"~%" user)
+           (login)))))

@@ -116,6 +116,8 @@ given server."
   "Sends an event to all clients that satisfy (NEEDS-TO-KNOW-P CLIENT EVENT)."
   XXX)
 
+;; this should be generalized so that it takes the client as argument
+;; (see `send-event' above)
 (defun client-message (format &rest args)
   "Sends a message to the client from a client thread."
   (let ((stream (socket-stream (client-socket *current-client*))))
@@ -125,3 +127,10 @@ given server."
 (defun client-read ()
   "Read a line coming from the client thread."
   (read-line (socket-stream (client-socket *current-client*))))
+
+(defun client-message-1 (client format &rest args)
+  "Sends a message to a given client."
+  (let ((stream (socket-stream (client-socket (or client
+                                                  *current-client*)))))
+    (apply #'format stream format args)
+    (finish-output stream)))
