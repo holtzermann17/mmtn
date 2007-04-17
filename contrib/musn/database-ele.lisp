@@ -46,11 +46,14 @@ entries in a table that match a given predicate.
 
 ;;; Things
 
-;; Maybe it is a little bad from a coding transparency point of view,
-;; but these Things will be keyed by id number -- which doesn't appear
-;; in their class definition.  I wonder if it wouldn't be better to key
-;; this class by the data -- since I want it to be unique -- and store
-;; id numbers as a secondary slot.  (OK, that's how I'm going forward.)
+;; DESIGN NOTE: I want to key this class by the data -- since I want
+;; that data to be unique -- and store id numbers as a secondary slot.
+;; However, since I am storing the data in the key, it seems a little
+;; strange to *also* have the data present in the value.  Maybe the
+;; only value that is needed is the id number?  I don't know what
+;; makes for good style.  (Furthermore, it might be nice if I could
+;; reliably use things built in to Elephant to keep track of id
+;; numbers, e.g. see "Class Indices" in the documentation.)
 (defclass thing ()
   ((data :accessor thing-data :initarg :data)
    (id :accessor thing-id :initarg :id))
@@ -110,15 +113,16 @@ current thing-autoindex."
 
 (add-index *things* :index-name 'triples-beginning
                     :key-form '(lambda (index k v)
-                                (declare (ignore index k))
-                                (if (subtypep (type-of v) 'triple) 
-                                    (values t (triple-beginning v))
+                                (declare (ignore index v))
+                                (if (subtypep (type-of k) 'triple) 
+                                    (values t (triple-beginning k))
                                     (values nil nil)))
                     :populate t)
 
 (defun match-triples-beginning (beginning)
   (map-index (lambda (k v pk) (declare (ignore k pk)) (print v))
-             (get-index *things* 'triples-beginning :value beginning)))
+             (get-index *things* 'triples-beginning)
+              :value beginning))
 
 (add-index *things* :index-name 'triples-middle
                     :key-form '(lambda (index k v)
@@ -141,3 +145,19 @@ current thing-autoindex."
 (defun match-triples-end (end)
   (map-index (lambda (k v pk) (declare (ignore k pk)) (print v))
              (get-index *things* 'triples-end :value end)))
+
+;;; Utility
+
+(defun print-things ()
+  (map-btree (lambda (k v) (format t "~a | ~a/~a~%" 
+                                   k
+                                   (let ((data (thing-data v)))
+                                     (cond ((eq (type-of data) 'triple)
+                                            (format-triple data))
+                                           (t data)))
+                                   (thing-id v)))
+             *things*))
+
+(defun format-triple (triple)
+  (format nil "[~a ~a ~a]" 
+          (triple-beginning triple) (triple-middle triple)  (triple-end triple)))
