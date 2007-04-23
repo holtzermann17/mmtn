@@ -1,9 +1,6 @@
-;;; Elephant Preliminaries
+;;; Preliminaries
 
 (asdf:operate 'asdf:load-op :elephant)
-(elephant:open-store '(:bdb "/home/joe/musndb"))
-; OR on my machine at home:
-(elephant:open-store '(:bdb "/Users/jcorneli/musndb"))
 
 #| Starting with some general questions...
 
@@ -34,6 +31,13 @@ entries in a table that match a given predicate.
 
 (defpackage elephant-autoindex (:use :cl :elephant))
 (in-package :elephant-autoindex)
+
+(elephant:open-store '(:bdb "/home/joe/musndb")) ; OR -
+; on my machine at home:
+(elephant:open-store '(:bdb "/Users/jcorneli/musndb"))
+
+;; And to recover after a crash or otherwise, do
+(elephant:open-store '(:bdb "/Users/jcorneli/musndb") :recover t)
 
 ;;; Counter
 
@@ -120,20 +124,30 @@ current thing-autoindex."
                     :populate t)
 
 (defun match-triples-beginning (beginning)
-  (map-index (lambda (k v pk) (declare (ignore k pk)) (print v))
-             (get-index *things* 'triples-beginning)
-              :value beginning))
+  (let ((results (list nil)))
+    (map-index (lambda (k v pk) 
+                 (declare (ignore k pk)) 
+                 (setq results (nconc results (list v))))
+               (get-index *things* 'triples-beginning)
+               :value beginning)
+    (cdr results)))
 
 (add-index *things* :index-name 'triples-middle
                     :key-form '(lambda (index k v)
-                                (if (subtypep (type-of v) 'triple) 
-                                    (values t (triple-middle v))
+                                (declare (ignore index v))
+                                (if (subtypep (type-of k) 'triple)
+                                    (values t (triple-middle k))
                                     (values nil nil)))
                     :populate t)
 
 (defun match-triples-middle (middle)
-  (map-index (lambda (k v pk) (declare (ignore k pk)) (print v))
-             (get-index *things* 'triples-middle :value middle)))
+  (let ((results (list nil)))
+    (map-index (lambda (k v pk) 
+                 (declare (ignore k pk)) 
+                 (setq results (nconc results (list v))))
+               (get-index *things* 'triples-middle)
+               :value middle)
+    (cdr results)))
 
 (add-index *things* :index-name 'triples-end
                     :key-form '(lambda (index k v)
@@ -143,8 +157,13 @@ current thing-autoindex."
                     :populate t)
 
 (defun match-triples-end (end)
-  (map-index (lambda (k v pk) (declare (ignore k pk)) (print v))
-             (get-index *things* 'triples-end :value end)))
+  (let ((results (list nil)))
+    (map-index (lambda (k v pk) 
+                 (declare (ignore k pk)) 
+                 (setq results (nconc results (list v))))
+               (get-index *things* 'triples-end)
+               :value end)
+    (cdr results)))
 
 ;;; Utility
 
