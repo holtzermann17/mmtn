@@ -151,8 +151,9 @@ current thing-autoindex."
 
 (add-index *things* :index-name 'triples-end
                     :key-form '(lambda (index k v)
-                                (if (subtypep (type-of v) 'triple) 
-                                    (values t (triple-end v))
+                                (declare (ignore index v))
+                                (if (subtypep (type-of k) 'triple)
+                                    (values t (triple-end k))
                                     (values nil nil)))
                     :populate t)
 
