@@ -1,33 +1,40 @@
+;; database-ele.lisp -- wrapping the Elephant database for MUSN
+;; Copyright (C) 2007 Joseph Corneli <jcorneli@planetmath.org>
+;; Copyright wholly transfered to the public domain in the USA and
+;; worldwide wherever this is possible.  Contact me for other
+;; arrangements if necessary.
+
+;;; Documentation
+
+;; This code stores a collection of Things, some of which are Triples.
+;; Things are kept unique by contents and have unique id numbers, but
+;; they are otherwise arbitrary.  Triples refer to the ids of Things.
+
+;; You can look Things up by value or by id number:
+
+; (get-value "foo" *things*)
+; (get-value 5 *by-id*)
+
+;; You can look up Triples matching certain criteria, e.g. use
+;; (match-triples-beginning 5) find those Triples whose beginning slot
+;; is 5.
+
+;;; Questions: 
+
+;; If we make lots of attachments (e.g. thing of a million Triples all
+;; asserting "/foo/ is an article"), then we might be better served by
+;; working with classes and indexing them.  (Quoting from the elephant
+;; manual: "what if we have thousands of friends? Aside from never
+;; getting work done, our get-instances-by-class will be doing a great
+;; deal of consing, eating up lots of memory and wasting our
+;; time. Fortunately there is a more efficient way of dealing with all
+;; the instances of a class." -- I don't see the definition of this
+;; function anywhere, but it sounds bad, and we want to avoid things
+;; like that.)
+
 ;;; Preliminaries
 
 (asdf:operate 'asdf:load-op :elephant)
-
-#| Starting with some general questions...
-
-* Can I make a table of triples, where each slot is something
-arbitrary, not some specific thing like a "string"?  -- I think the
-answer is: yes, just don't specify the :type option.
-
- - However, it is probably better to make a table of Things, and make
-the Triples refer to id numbers of Things.
-
-* Can I make it so that the id number is automatically incremented
-when I add things to this particular table of items, like we did with
-SQL?
-
- - Yes; but I have to make the auto-incrementer "by hand".  The same
-apparently goes for other SQL features like identifying all of the
-entries in a table that match a given predicate.
-
- |#
-
-;; do I need to specifically list the relid, if that's what I want the
-;; btree to be indexed by?
-;;
-;; -- Maybe what I need to do is put TRIPLES into precisely one slot,
-;; and then index that one slot.  I don't think that it is completely
-;; necessary for the triples themselves to be persistent, but I will
-;; want to check this out.
 
 (defpackage elephant-autoindex (:use :cl :elephant))
 (in-package :elephant-autoindex)
@@ -37,16 +44,8 @@ entries in a table that match a given predicate.
 (elephant:open-store '(:bdb "/Users/jcorneli/musndb"))
 
 ;; And to recover after a crash or otherwise, do
+(elephant:open-store '(:bdb "/home/joe/musndb") :recover t) ; OR -
 (elephant:open-store '(:bdb "/Users/jcorneli/musndb") :recover t)
-
-;;; Counter
-
-;; I can maintain my own count on the number of Things in the
-;; database.  As long as this number is strictly increasing, then this
-;; counter can be used to maintain uniqueness of ID numbers.
-;; Accordingly (you only want to do this One Time):
-
-(add-to-root "thing-autoindex" 0)
 
 ;;; Things
 
@@ -55,9 +54,11 @@ entries in a table that match a given predicate.
 ;; However, since I am storing the data in the key, it seems a little
 ;; strange to *also* have the data present in the value.  Maybe the
 ;; only value that is needed is the id number?  I don't know what
-;; makes for good style.  (Furthermore, it might be nice if I could
-;; reliably use things built in to Elephant to keep track of id
-;; numbers, e.g. see "Class Indices" in the documentation.)
+;; makes for good style.  One problem is with look-up; see `nl-triple'
+;; for something that would need a work-around.  (Furthermore, it
+;; might be nice if I could reliably use things built-in in Elephant
+;; to keep track of id numbers, e.g. see "Class Indices" in the
+;; documentation.)
 (defclass thing ()
   ((data :accessor thing-data :initarg :data)
    (id :accessor thing-id :initarg :id))
@@ -67,16 +68,23 @@ entries in a table that match a given predicate.
 ;; retrieved in a new LISP session?
 (defvar *things* (with-transaction () (make-indexed-btree)))
 
+;; NOTE: This keeps Things unique by name - and if a name exists, then
+;; it has a fixed id number forever.  There is an alternative
+;; possibility, namely to keep things unique by id number.  I'm not
+;; sure it matters much.
 (defun add-thing (data)
   "Add a new Thing to the permanent collection and return this Thing.
 Things are also kept unique by their DATA.  Each Thing will have a
 unique id number, generated when it is created by incrementing the
-current thing-autoindex."
+current thing-autoindex.  If adding fails because the Thing is already
+present in the store, return nil."
   (with-transaction ()
-    (let ((id (add-to-root "thing-autoindex"
-                           (1+ (get-from-root "thing-autoindex")))))
-      (setf (get-value data *things*)
-            (make-instance 'thing :data data :id id)))))
+    (let ((extant-data (get-value data *things*)))
+      (unless extant-data
+        (let ((id (add-to-root "thing-autoindex"
+                               (1+ (get-from-root "thing-autoindex")))))
+          (setf (get-value data *things*)
+                (make-instance 'thing :data data :id id)))))))
 
 ;; Setting up lookup by ID number... 
 
@@ -92,15 +100,15 @@ current thing-autoindex."
              :key-form 'key-by-id
              :populate t))
 
-; do, for example: (get-value 5 *by-id*)
 (defvar *by-id* (get-index *things* 'by-id))
 
 ;;; Triples
 
-;; Note: right now you can store anything in these triples.
-;; Later it would probably enhance "best practices" to insist
-;; that people just store *numbers* in them, and that these
-;; numbers will point at Things.  
+;; Note: right now you can store anything in these triples.  Later it
+;; would probably enhance "best practices" to insist that people just
+;; store *numbers* in them, and that these numbers will point at
+;; Things (FYI, this is what I always do in practice with the
+;; functions below).
 
 (defclass triple ()
   ((beginning  :accessor triple-beginning :initarg :beginning)
@@ -108,10 +116,10 @@ current thing-autoindex."
    (end        :accessor triple-end       :initarg :end))
   (:metaclass persistent-metaclass))
 
-;; Triples are just another kind of Thing.
-(defun add-triple (beginning middle end)
-  "Add a new Triple to the permanent collection and return this Triple."
-  (add-thing (make-instance 'triple :beginning beginning :middle middle :end end)))
+(defun add-triple (begid midid endid)
+  "Add a new Triple [BEGID MIDID ENDID] to the collection of Things.
+Return this Triple as a Thing."
+  (add-thing (make-instance 'triple :beginning begid :middle midid :end endid)))
 
 ;;; Indexes for selecting triples according to their constituents.
 
@@ -123,14 +131,15 @@ current thing-autoindex."
                                     (values nil nil)))
                     :populate t)
 
+;; This is much more succinct now that there is a `:collect' keyword.
 (defun match-triples-beginning (beginning)
-  (let ((results (list nil)))
-    (map-index (lambda (k v pk) 
-                 (declare (ignore k pk)) 
-                 (setq results (nconc results (list v))))
-               (get-index *things* 'triples-beginning)
-               :value beginning)
-    (cdr results)))
+  (map-index (lambda (k v pk) (declare (ignore k pk)) v)
+             (get-index *things* 'triples-beginning)
+             :value beginning
+             :collect t))
+
+(defun match-triples-beginning-nl (beginning)
+  (match-triples-beginning (thing-id (get-value beginning *things*))))
 
 (add-index *things* :index-name 'triples-middle
                     :key-form '(lambda (index k v)
@@ -141,13 +150,13 @@ current thing-autoindex."
                     :populate t)
 
 (defun match-triples-middle (middle)
-  (let ((results (list nil)))
-    (map-index (lambda (k v pk) 
-                 (declare (ignore k pk)) 
-                 (setq results (nconc results (list v))))
-               (get-index *things* 'triples-middle)
-               :value middle)
-    (cdr results)))
+  (map-index (lambda (k v pk) (declare (ignore k pk)) v)
+             (get-index *things* 'triples-middle)
+             :value middle
+             :collect t))
+
+(defun match-triples-middle-nl (middle)
+  (match-triples-middle (thing-id (get-value middle *things*))))
 
 (add-index *things* :index-name 'triples-end
                     :key-form '(lambda (index k v)
@@ -158,26 +167,122 @@ current thing-autoindex."
                     :populate t)
 
 (defun match-triples-end (end)
-  (let ((results (list nil)))
-    (map-index (lambda (k v pk) 
-                 (declare (ignore k pk)) 
-                 (setq results (nconc results (list v))))
-               (get-index *things* 'triples-end)
-               :value end)
-    (cdr results)))
+  (map-index (lambda (k v pk) (declare (ignore k pk)) v)
+             (get-index *things* 'triples-end)
+             :value end
+             :collect t))
+
+(defun match-triples-end-nl (end)
+  (match-triples-end (thing-id (get-value end *things*))))
+
+;; I don't know a good function for indexing *any* slot, or any
+;; particular *combo* of slots; but if I did, I would write functions
+;; like `match-triples-containing' and `match-triples--middle-end'
+;; etc.
 
 ;;; Utility
 
-(defun print-things ()
+(defun format-triple (triple)
+  (format nil "[~a ~a ~a]" 
+          (triple-beginning triple) (triple-middle triple) (triple-end triple)))
+
+;; This function is written using `get-value', and I don't know if
+;; there is any corresponding `get-key' or any way to get the key when
+;; I look things up using `*by-id*'.  You'd think there might be,
+;; given that I was able to get ahold of key data with functions like
+;; `match-triples-end' etc.
+(defun nl-triple (triple)
+  (let ((beg (thing-data (get-value (triple-beginning triple) *by-id*)))
+        (mid (thing-data (get-value (triple-middle triple) *by-id*)))
+        (end (thing-data (get-value (triple-end triple) *by-id*))))
+    (format nil "[~a ~a ~a]" 
+            (printable-triple-or-data beg)
+            (printable-triple-or-data mid)
+            (printable-triple-or-data end))))
+
+;; Printing is done in a mildly recursive way so that analogies
+;; between triples are pretty-printed.
+(defun printable-triple-or-data (data)
+  (cond ((eq (type-of data) 'triple)
+         (nl-triple data))
+        (t data)))
+
+;; Not sure about the return value... 
+(defun print-things (things)
+  "THINGS is a list of things to print."
+  (map nil (lambda (thing) (format t "~a/~a~%"
+                                   (printable-triple-or-data (thing-data thing))
+                                   (thing-id thing)))
+       things))
+
+(defun print-everything ()
   (map-btree (lambda (k v) (format t "~a | ~a/~a~%" 
                                    k
-                                   (let ((data (thing-data v)))
-                                     (cond ((eq (type-of data) 'triple)
-                                            (format-triple data))
-                                           (t data)))
+                                   (printable-triple-or-data (thing-data v))
                                    (thing-id v)))
              *things*))
 
-(defun format-triple (triple)
-  (format nil "[~a ~a ~a]" 
-          (triple-beginning triple) (triple-middle triple)  (triple-end triple)))
+;;; More convenient way to add triples.
+
+;; (It might be nice to have a mixed-modality way to add triples,
+;; combining id numbers and other things.  I suppose one aesthetic
+;; interpretation of that way of doing things is that id numbers are
+;; "already in the store", even thought that is, of course, a
+;; convenient fiction -- we could obviously have a *number* in the
+;; store, and this number would very likely have some *other* id
+;; number.)
+(defun add-triple-nl (beginning middle end)
+  "Add the triple corresponding to [BEGINNING MIDDLE END]." 
+  (let ((begid (thing-id (or (get-value beginning *things*)
+                             (add-thing beginning))))
+        (midid (thing-id (or (get-value middle *things*)
+                             (add-thing middle))))
+        (endid (thing-id (or (get-value end *things*)
+                             (add-thing end)))))
+    (add-triple begid midid endid)))
+
+;;; Theories
+
+;; I want some convenient way to add (and then work with respect to)
+;; some new btree, instead of the global store.  This will allow me to
+;; make "little theories" with their own sets of triples.  
+
+;; So, I will assert the following : A Theory is just a collection of
+;; Things, some of which may be Triples.  It will be convenient to
+;; place such a collection of Things into a btree.
+
+;; This probably means that all of the functions that went before will
+;; have to take an optional Theory argument; either that, or perhaps I
+;; can write an `in-theory' or `with-theory' macro that will reroute
+;; the output of the above commands into the named Theory in question.
+
+;; Note, there could be different kinds of currency/commonality
+;; between theories, for example, "tom" might refer to the same Tom in
+;; Theory A and Theory B, or it might not.  
+
+;; This is the reason for suggesting that we let theories contain
+;; things that aren't triples -- but I will want to think about this
+;; to be sure: it may be convenient to insist that basic things go
+;; into the common store, and only triples go into the theories -- but
+;; that seems a bit strange.  On the other hand, a theory might be
+;; defined by the assertions it makes about things, not so much by
+;; where the things are.  So, if the set of assertions is kept
+;; distinct, then the theory would be distinct too.  
+
+;; It does seem to me that we will want to be able to add something to
+;; a new large/efficient collection, but that may be the only aspect
+;; of a "theory" that needs to be formally encoded at this level.
+
+;;; Persistence (You only want to do this Once.)
+
+;; NOTE: I'm not sure whether the indices `triples-beginning' etc.
+;; mentioned above also need to be stored in the root.
+
+;; I can maintain my own count on the number of Things in the
+;; database.  As long as this number is strictly increasing, then this
+;; counter can be used to maintain uniqueness of ID numbers.
+;; Accordingly (you only want to do this One Time):
+
+(add-to-root "thing-autoindex" 0)
+(add-to-root '*things* *things*)
+(add-to-root '*by-id* *by-id*)

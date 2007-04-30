@@ -1,0 +1,23 @@
+Starting with some general questions...
+
+Can I make a table of triples, where each slot is something arbitrary,
+not some specific thing like a "string"?  -- I think the answer is:
+yes, just don't specify the :type option.
+
+- However, it is probably better to make a table of Things, and make
+the Triples refer to id numbers of Things.
+
+Can I make it so that the id number is automatically incremented when
+I add things to this particular table of items, like we did with SQL?
+
+- Yes; but I have to make the auto-incrementer "by hand".  The same
+apparently goes for other SQL features like identifying all of the
+entries in a table that match a given predicate.
+
+Do I need to specifically list the relid, if that's what I want the
+btree to be indexed by?
+
+- Maybe what I need to do is put TRIPLES into precisely one slot,
+and then index that one slot.  I don't think that it is completely
+necessary for the triples themselves to be persistent, but I will
+want to check this out.
